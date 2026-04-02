@@ -1,0 +1,6 @@
+name: support-ticket-env
+description: Customer support simulation environment
+tasks:
+  - easy
+  - medium
+  - hard
