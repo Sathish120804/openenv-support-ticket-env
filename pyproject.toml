@@ -1,0 +1,15 @@
+[project]
+name = "openenv-support-ticket-env"
+version = "0.1.0"
+description = "OpenEnv Support Ticket Environment"
+authors = [{ name = "Sathish" }]
+dependencies = [
+    "pydantic",
+    "fastapi",
+    "uvicorn",
+    "openenv-core"
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
