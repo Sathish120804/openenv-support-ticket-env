@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+import uvicorn
+
 from env.environment import SupportEnv
 from env.models import Action
 from env.tasks import EasyTask
@@ -45,3 +47,13 @@ def step(action: dict):
 @app.get("/state")
 def state():
     return {"status": "running"}
+
+
+# 🔥 REQUIRED MAIN FUNCTION
+def main():
+    uvicorn.run("server.app:app", host="0.0.0.0", port=7860)
+
+
+# 🔥 REQUIRED ENTRY POINT
+if __name__ == "__main__":
+    main()
