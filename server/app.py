@@ -1,15 +1,19 @@
 from fastapi import FastAPI
 import uvicorn
+import os
+import json
+
+from openai import OpenAI
 
 from env.environment import SupportEnv
 from env.models import Action
 from env.tasks import EasyTask, MediumTask, HardTask
 
-# 🔥 REQUIRED FOR API
+# 🔥 FastAPI app (Phase 1)
 app = FastAPI()
 
 
-# 🔥 API ENDPOINTS (Phase 1)
+# 🔥 API ENDPOINTS
 @app.get("/")
 def root():
     return {"message": "OpenEnv API running"}
@@ -27,22 +31,53 @@ def reset():
     }
 
 
-# 🔥 AGENT LOGIC (Phase 2)
-def simple_agent(obs):
-    query = obs.customer_query.lower()
+@app.get("/state")
+def state():
+    return {"status": "running"}
 
-    if "delayed" in query:
+
+# 🔥 LLM AGENT (Phase 2 REQUIREMENT)
+def simple_agent(obs):
+    client = OpenAI(
+        base_url=os.environ["API_BASE_URL"],
+        api_key=os.environ["API_KEY"]
+    )
+
+    prompt = f"""
+You are a customer support assistant.
+
+Classify or respond to the query.
+
+Allowed actions:
+- classify → delivery / payment_issue / damaged
+- respond → apology or resolution
+
+Query: {obs.customer_query}
+
+Return ONLY JSON:
+{{
+  "action_type": "classify or respond",
+  "content": "value"
+}}
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model=os.environ.get("MODEL_NAME", "gpt-3.5-turbo"),
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        output = response.choices[0].message.content.strip()
+
+        parsed = json.loads(output)
+        return Action(**parsed)
+
+    except:
+        # 🔥 fallback (MANDATORY)
         return Action(action_type="classify", content="delivery")
 
-    if "damaged" in query:
-        return Action(action_type="respond", content="Sorry for the issue")
 
-    if "payment" in query:
-        return Action(action_type="classify", content="payment_issue")
-
-    return Action(action_type="classify", content="delivery")
-
-
+# 🔥 TASK RUNNER (Phase 2 logs)
 def run_task(task, name):
     print(f"[START] task={name}", flush=True)
 
@@ -65,9 +100,9 @@ def run_task(task, name):
     print(f"[END] task={name} score={round(total_score,2)} steps={step+1}", flush=True)
 
 
-# 🔥 MAIN FUNCTION (RUN BOTH)
+# 🔥 MAIN ENTRY (RUN EVERYTHING)
 def main():
-    # Phase 2 logs
+    # Phase 2 execution
     run_task(EasyTask(), "Easy")
     run_task(MediumTask(), "Medium")
     run_task(HardTask(), "Hard")
@@ -76,6 +111,6 @@ def main():
     uvicorn.run("server.app:app", host="0.0.0.0", port=7860)
 
 
-# 🔥 ENTRY POINT
+# 🔥 REQUIRED ENTRY POINT
 if __name__ == "__main__":
     main()
