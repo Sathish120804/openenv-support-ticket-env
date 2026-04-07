@@ -1,54 +1,53 @@
-import sys
-import os
-
-print("🔥 FASTAPI VERSION RUNNING")
-
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-
-from fastapi import FastAPI
 from env.environment import SupportEnv
 from env.models import Action
-from env.tasks import EasyTask
-
-app = FastAPI()
-
-env = SupportEnv(EasyTask())
+from env.tasks import EasyTask, MediumTask, HardTask
 
 
-@app.get("/")
-def root():
-    return {"message": "OpenEnv API running"}
+def simple_agent(obs):
+    query = obs.customer_query.lower()
+
+    if "delayed" in query:
+        return Action(action_type="classify", content="delivery")
+
+    if "damaged" in query:
+        return Action(action_type="respond", content="Sorry for the issue")
+
+    if "payment" in query:
+        return Action(action_type="classify", content="payment_issue")
+
+    return Action(action_type="classify", content="delivery")
 
 
-@app.post("/reset")
-def reset():
+def run_task(task, name):
+    print(f"[START] task={name}", flush=True)
+
+    env = SupportEnv(task)
     obs = env.reset()
-    return {
-        "ticket_id": obs.ticket_id,
-        "customer_query": obs.customer_query,
-        "history": obs.history
-    }
+
+    total_score = 0
+
+    for step in range(3):
+        action = simple_agent(obs)
+
+        obs, reward, done, _ = env.step(action)
+
+        print(
+            f"[STEP] step={step+1} reward={reward.score}",
+            flush=True
+        )
+
+        total_score += reward.score
+
+        if done:
+            break
+
+    print(
+        f"[END] task={name} score={round(total_score,2)} steps={step+1}",
+        flush=True
+    )
 
 
-@app.post("/step")
-def step(action: dict):
-    act = Action(**action)
-    obs, reward, done, _ = env.step(act)
-
-    return {
-        "observation": {
-            "ticket_id": obs.ticket_id,
-            "customer_query": obs.customer_query,
-            "history": obs.history
-        },
-        "reward": {
-            "score": reward.score,
-            "feedback": reward.feedback
-        },
-        "done": done
-    }
-
-
-@app.get("/state")
-def state():
-    return {"status": "running"}
+if __name__ == "__main__":
+    run_task(EasyTask(), "Easy")
+    run_task(MediumTask(), "Medium")
+    run_task(HardTask(), "Hard")
