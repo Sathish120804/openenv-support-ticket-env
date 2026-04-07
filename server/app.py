@@ -1,8 +1,33 @@
+from fastapi import FastAPI
+import uvicorn
+
 from env.environment import SupportEnv
 from env.models import Action
 from env.tasks import EasyTask, MediumTask, HardTask
 
+# 🔥 REQUIRED FOR API
+app = FastAPI()
 
+
+# 🔥 API ENDPOINTS (Phase 1)
+@app.get("/")
+def root():
+    return {"message": "OpenEnv API running"}
+
+
+@app.post("/reset")
+def reset():
+    env = SupportEnv(EasyTask())
+    obs = env.reset()
+
+    return {
+        "ticket_id": obs.ticket_id,
+        "customer_query": obs.customer_query,
+        "history": obs.history
+    }
+
+
+# 🔥 AGENT LOGIC (Phase 2)
 def simple_agent(obs):
     query = obs.customer_query.lower()
 
@@ -40,18 +65,17 @@ def run_task(task, name):
     print(f"[END] task={name} score={round(total_score,2)} steps={step+1}", flush=True)
 
 
-# 🔥 THIS IS THE MAIN FUNCTION (YOU ADD THIS)
+# 🔥 MAIN FUNCTION (RUN BOTH)
 def main():
-    # Run logs (for validator)
+    # Phase 2 logs
     run_task(EasyTask(), "Easy")
     run_task(MediumTask(), "Medium")
     run_task(HardTask(), "Hard")
 
-    # Start API
-    import uvicorn
+    # Phase 1 API
     uvicorn.run("server.app:app", host="0.0.0.0", port=7860)
 
 
-# 🔥 VERY IMPORTANT (DON'T MISS THIS)
+# 🔥 ENTRY POINT
 if __name__ == "__main__":
     main()
